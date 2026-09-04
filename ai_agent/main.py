@@ -1,7 +1,7 @@
 import os
 
 from fastapi import FastAPI, HTTPException
-from openai import OpenAI
+from openai import AuthenticationError, OpenAI
 from pydantic import BaseModel
 
 
@@ -32,8 +32,14 @@ def generate(request: Message) -> Message:
         )
 
     client = OpenAI()
-    response = client.responses.create(
-        model="gpt-5.6-luna",
-        input=request.message,
-    )
+    try:
+        response = client.responses.create(
+            model="gpt-5.6-luna",
+            input=request.message,
+        )
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI authentication failed",
+        )
     return Message(message=response.output_text)
