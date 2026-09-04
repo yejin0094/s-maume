@@ -1,4 +1,6 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
 
@@ -22,6 +24,13 @@ def echo(request: Message) -> Message:
 
 @app.post("/generate", response_model=Message)
 def generate(request: Message) -> Message:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI API key is not configured",
+        )
+
     client = OpenAI()
     response = client.responses.create(
         model="gpt-5.6-luna",
