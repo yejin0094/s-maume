@@ -1,7 +1,7 @@
 import os
 
 from fastapi import FastAPI, HTTPException
-from openai import APIConnectionError, AuthenticationError, OpenAI
+from openai import APIConnectionError, AuthenticationError, OpenAI, RateLimitError
 from pydantic import BaseModel
 
 
@@ -41,6 +41,11 @@ def generate(request: Message) -> Message:
         raise HTTPException(
             status_code=503,
             detail="OpenAI authentication failed",
+        )
+    except RateLimitError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI rate limit exceeded",
         )
     except APIConnectionError:
         raise HTTPException(
