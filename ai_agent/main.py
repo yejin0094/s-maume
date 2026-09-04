@@ -51,12 +51,38 @@ def classify_intent(request: Message) -> ClassifyResponse:
         )
 
     client = OpenAI()
-    response = client.responses.parse(
-        model="gpt-5.6-luna",
-        instructions=CLASSIFICATION_INSTRUCTIONS,
-        input=request.message,
-        text_format=ClassifyResponse,
-    )
+    try:
+        response = client.responses.parse(
+            model="gpt-5.6-luna",
+            instructions=CLASSIFICATION_INSTRUCTIONS,
+            input=request.message,
+            text_format=ClassifyResponse,
+        )
+    except AuthenticationError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI authentication failed",
+        )
+    except RateLimitError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI rate limit exceeded",
+        )
+    except InternalServerError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI server error",
+        )
+    except APIConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI service is unavailable",
+        )
+    if response.output_parsed is None:
+        raise HTTPException(
+            status_code=502,
+            detail="OpenAI response could not be parsed",
+        )
     return response.output_parsed
 
 
