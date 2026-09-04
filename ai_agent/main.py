@@ -1,7 +1,8 @@
 import os
-from typing import Literal
+from typing import Literal, NotRequired, TypedDict
 
 from fastapi import FastAPI, HTTPException
+from langgraph.graph import END, START, StateGraph
 from openai import APIConnectionError, AuthenticationError, InternalServerError, OpenAI, RateLimitError
 from pydantic import BaseModel
 
@@ -20,6 +21,11 @@ IntentLabel = Literal[
     "hybrid",
     "other",
 ]
+
+
+class ClassificationState(TypedDict):
+    message: str
+    intent: NotRequired[IntentLabel]
 
 
 class ClassifyResponse(BaseModel):
@@ -52,6 +58,33 @@ def classify_intent(request: Message) -> ClassifyResponse:
         text_format=ClassifyResponse,
     )
     return response.output_parsed
+
+
+def classification_node(
+    state: ClassificationState,
+) -> dict[str, IntentLabel]:
+    result = classify_intent(
+        Message(message=state["message"])
+    )
+    return {
+        "intent": result.intent,
+    }
+
+
+workflow = StateGraph(ClassificationState)
+workflow.add_node(
+    "classification",
+    classification_node,
+)
+workflow.add_edge(
+    START,
+    "classification",
+)
+workflow.add_edge(
+    "classification",
+    END,
+)
+classification_graph = workflow.compile()
 
 
 @app.get("/health")
