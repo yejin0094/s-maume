@@ -126,7 +126,21 @@ async def generate_test(request: Message) -> Message:
 
 
 @app.post("/api/chat", response_model=Message)
-async def chat(request: Message) -> Message:
+async def chat(
+    request: Message,
+    db: Session = Depends(get_db),
+) -> Message:
+    try:
+        faq = search_faq(db, request.message)
+    except SQLAlchemyError as error:
+        raise HTTPException(
+            status_code=503,
+            detail="FAQ 데이터베이스에 연결할 수 없습니다.",
+        ) from error
+
+    if faq is not None:
+        return Message(message=faq.answer)
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
