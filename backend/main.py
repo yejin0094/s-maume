@@ -29,11 +29,16 @@ app.add_middleware(
 AI_AGENT_BASE_URL = os.getenv("AI_AGENT_BASE_URL", "http://127.0.0.1:8001")
 AI_AGENT_ECHO_URL = f"{AI_AGENT_BASE_URL.rstrip('/')}/echo"
 AI_AGENT_GENERATE_URL = f"{AI_AGENT_BASE_URL.rstrip('/')}/generate"
+AI_AGENT_CLASSIFY_URL = f"{AI_AGENT_BASE_URL.rstrip('/')}/classify"
 logger = logging.getLogger(__name__)
 
 
 class Message(BaseModel):
     message: str
+
+
+class ClassifyResponse(BaseModel):
+    intent: str
 
 
 def _anonymous_session_id(value: str | None) -> str:
@@ -123,6 +128,24 @@ async def generate_test(request: Message) -> Message:
         ) from error
 
     return Message.model_validate(response.json())
+
+
+@app.post("/api/classify-test", response_model=ClassifyResponse)
+async def classify_test(request: Message) -> ClassifyResponse:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                AI_AGENT_CLASSIFY_URL,
+                json={"message": request.message},
+            )
+            response.raise_for_status()
+    except (httpx.RequestError, httpx.HTTPStatusError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="AI Agent 연결 실패",
+        ) from error
+
+    return ClassifyResponse.model_validate(response.json())
 
 
 @app.post("/api/chat", response_model=Message)

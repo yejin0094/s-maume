@@ -126,6 +126,49 @@ def test_chat_falls_back_to_mocked_ai_agent(
     ]
 
 
+def test_classify_test_returns_mocked_ai_agent_intent(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    calls: list[tuple[str, dict[str, str]]] = []
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict[str, str]:
+            return {"intent": "structured"}
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_value, traceback):
+            return False
+
+        async def post(self, url: str, json: dict[str, str]) -> FakeResponse:
+            calls.append((url, json))
+            return FakeResponse()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", FakeAsyncClient)
+    response = client.post(
+        "/api/classify-test",
+        json={"message": "Show me the student cafeteria menu for today."},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"intent": "structured"}
+    assert calls == [
+        (
+            main.AI_AGENT_CLASSIFY_URL,
+            {"message": "Show me the student cafeteria menu for today."},
+        )
+    ]
+
+
 def test_faq_not_found(client: TestClient) -> None:
     response = client.post("/api/faq/search", json={"question": "오늘 비 와?"})
 
