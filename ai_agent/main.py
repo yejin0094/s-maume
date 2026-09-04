@@ -97,6 +97,18 @@ def echo(request: Message) -> Message:
     return request
 
 
+@app.post("/classify", response_model=ClassifyResponse)
+def classify(request: Message) -> ClassifyResponse:
+    result = classification_graph.invoke(
+        {
+            "message": request.message,
+        }
+    )
+    return ClassifyResponse(
+        intent=result["intent"],
+    )
+
+
 @app.post("/generate", response_model=Message)
 def generate(request: Message) -> Message:
     api_key = os.getenv("OPENAI_API_KEY")
