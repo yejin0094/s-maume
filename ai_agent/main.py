@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from openai import APIConnectionError, AuthenticationError, InternalServerError, OpenAI, RateLimitError
@@ -10,6 +11,19 @@ app = FastAPI(title="S-MAUMe AI Agent")
 
 class Message(BaseModel):
     message: str
+
+
+IntentLabel = Literal[
+    "structured",
+    "document",
+    "relationship",
+    "hybrid",
+    "other",
+]
+
+
+class ClassifyResponse(BaseModel):
+    intent: IntentLabel
 
 
 @app.get("/health")
