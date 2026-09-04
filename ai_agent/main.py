@@ -1,7 +1,7 @@
 import os
 
 from fastapi import FastAPI, HTTPException
-from openai import AuthenticationError, OpenAI
+from openai import APIConnectionError, AuthenticationError, OpenAI
 from pydantic import BaseModel
 
 
@@ -41,5 +41,10 @@ def generate(request: Message) -> Message:
         raise HTTPException(
             status_code=503,
             detail="OpenAI authentication failed",
+        )
+    except APIConnectionError:
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI service is unavailable",
         )
     return Message(message=response.output_text)
