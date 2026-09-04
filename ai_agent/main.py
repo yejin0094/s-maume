@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from openai import OpenAI
 from pydantic import BaseModel
 
 
@@ -17,3 +18,13 @@ def health_check() -> dict[str, str]:
 @app.post("/echo", response_model=Message)
 def echo(request: Message) -> Message:
     return request
+
+
+@app.post("/generate", response_model=Message)
+def generate(request: Message) -> Message:
+    client = OpenAI()
+    response = client.responses.create(
+        model="gpt-5.6-luna",
+        input=request.message,
+    )
+    return Message(message=response.output_text)
