@@ -65,6 +65,67 @@ def test_faq_found_without_llm_or_agent(client: TestClient, monkeypatch) -> None
     }
 
 
+def test_chat_returns_faq_without_calling_ai_agent(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    class AgentMustNotBeCalled:
+        def __init__(self, *args, **kwargs):
+            raise AssertionError("FAQ request called the AI Agent")
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", AgentMustNotBeCalled)
+    response = client.post(
+        "/api/chat", json={"message": "도서관 몇 시까지 해?"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "message": "테스트용 안내: 중앙도서관 운영시간은 평일 09:00~22:00입니다."
+    }
+
+
+def test_chat_falls_back_to_mocked_ai_agent(
+    client: TestClient,
+    monkeypatch,
+) -> None:
+    calls: list[tuple[str, dict[str, str]]] = []
+
+    class FakeResponse:
+        def raise_for_status(self) -> None:
+            pass
+
+        def json(self) -> dict[str, str]:
+            return {"message": "mock-ai-response"}
+
+    class FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc_value, traceback):
+            return False
+
+        async def post(self, url: str, json: dict[str, str]) -> FakeResponse:
+            calls.append((url, json))
+            return FakeResponse()
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", FakeAsyncClient)
+    response = client.post(
+        "/api/chat", json={"message": "unmatched-question"}
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"message": "mock-ai-response"}
+    assert calls == [
+        (
+            main.AI_AGENT_GENERATE_URL,
+            {"message": "unmatched-question"},
+        )
+    ]
+
+
 def test_faq_not_found(client: TestClient) -> None:
     response = client.post("/api/faq/search", json={"question": "오늘 비 와?"})
 
