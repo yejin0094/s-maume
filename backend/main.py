@@ -123,3 +123,21 @@ async def generate_test(request: Message) -> Message:
         ) from error
 
     return Message.model_validate(response.json())
+
+
+@app.post("/api/chat", response_model=Message)
+async def chat(request: Message) -> Message:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                AI_AGENT_GENERATE_URL,
+                json={"message": request.message},
+            )
+            response.raise_for_status()
+    except (httpx.RequestError, httpx.HTTPStatusError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="AI Agent 연결 실패",
+        ) from error
+
+    return Message.model_validate(response.json())
