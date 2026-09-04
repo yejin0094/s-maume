@@ -54,20 +54,20 @@ function App() {
     setAgentResult("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/agent-test`, {
+      const response = await fetch(`${API_BASE_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message: input }),
       });
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error("Agent request failed");
+        throw new Error(data.detail ?? "AI 채팅 요청에 실패했습니다.");
       }
 
-      const data = await response.json();
       setAgentResult(data.message);
-    } catch {
-      setAgentResult("AI Agent 연결 실패");
+    } catch (error) {
+      setAgentResult(error.message ?? "AI 채팅 요청에 실패했습니다.");
     } finally {
       setIsSending(false);
     }
@@ -107,13 +107,13 @@ function App() {
       <p>{backendStatus}</p>
 
       <form onSubmit={sendMessage}>
-        <label htmlFor="agent-message">AI Agent Echo 테스트</label>
+        <label htmlFor="agent-message">AI 채팅</label>
         <div>
           <input
             id="agent-message"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder="문자열을 입력하세요"
+            placeholder="메시지를 입력하세요"
           />
           <button type="submit" disabled={isSending}>
             {isSending ? "전송 중" : "전송"}
