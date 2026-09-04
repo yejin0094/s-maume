@@ -28,6 +28,7 @@ app.add_middleware(
 
 AI_AGENT_BASE_URL = os.getenv("AI_AGENT_BASE_URL", "http://127.0.0.1:8001")
 AI_AGENT_ECHO_URL = f"{AI_AGENT_BASE_URL.rstrip('/')}/echo"
+AI_AGENT_GENERATE_URL = f"{AI_AGENT_BASE_URL.rstrip('/')}/generate"
 logger = logging.getLogger(__name__)
 
 
@@ -94,6 +95,24 @@ async def agent_test(request: Message) -> Message:
         async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.post(
                 AI_AGENT_ECHO_URL,
+                json={"message": request.message},
+            )
+            response.raise_for_status()
+    except (httpx.RequestError, httpx.HTTPStatusError) as error:
+        raise HTTPException(
+            status_code=503,
+            detail="AI Agent 연결 실패",
+        ) from error
+
+    return Message.model_validate(response.json())
+
+
+@app.post("/api/generate-test", response_model=Message)
+async def generate_test(request: Message) -> Message:
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                AI_AGENT_GENERATE_URL,
                 json={"message": request.message},
             )
             response.raise_for_status()
