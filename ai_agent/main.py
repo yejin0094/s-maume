@@ -26,6 +26,34 @@ class ClassifyResponse(BaseModel):
     intent: IntentLabel
 
 
+CLASSIFICATION_INSTRUCTIONS = """\
+Classify this campus question after an FAQ miss into exactly one intent:
+- structured: Best answered by querying structured data such as PostgreSQL, including cafeteria menus, timetables, facility information, and structured campus operations data.
+- document: Best answered by searching the text of notices, regulations, scholarship information, extracurricular program information, or academic documents.
+- relationship: Best answered by exploring relationships between entities, including prerequisites, department or organizational relationships, building connections, locations, and travel routes.
+- hybrid: Requires combining results from two or more different knowledge base types.
+- other: Outside the current campus knowledge base or not clearly classifiable as one of the four intents above.
+"""
+
+
+def classify_intent(request: Message) -> ClassifyResponse:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key or not api_key.strip():
+        raise HTTPException(
+            status_code=503,
+            detail="OpenAI API key is not configured",
+        )
+
+    client = OpenAI()
+    response = client.responses.parse(
+        model="gpt-5.6-luna",
+        instructions=CLASSIFICATION_INSTRUCTIONS,
+        input=request.message,
+        text_format=ClassifyResponse,
+    )
+    return response.output_parsed
+
+
 @app.get("/health")
 def health_check() -> dict[str, str]:
     return {"status": "ok"}
