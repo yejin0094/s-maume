@@ -3,6 +3,20 @@ import { createRoot } from "react-dom/client";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? "http://127.0.0.1:8000";
+const SESSION_STORAGE_KEY = "s-maume-anonymous-session-id";
+
+
+function getAnonymousSessionId() {
+  const existingSessionId = sessionStorage.getItem(SESSION_STORAGE_KEY);
+
+  if (existingSessionId) {
+    return existingSessionId;
+  }
+
+  const sessionId = crypto.randomUUID();
+  sessionStorage.setItem(SESSION_STORAGE_KEY, sessionId);
+  return sessionId;
+}
 
 
 function App() {
@@ -68,7 +82,10 @@ function App() {
     try {
       const response = await fetch(`${API_BASE_URL}/api/faq/search`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-ID": getAnonymousSessionId(),
+        },
         body: JSON.stringify({ question: faqQuestion }),
       });
       const data = await response.json();
